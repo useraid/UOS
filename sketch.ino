@@ -25,12 +25,16 @@
 extern "C" {
 #include "user_interface.h"
 }
+extern "C" {
+   #include "gpio.h"
+ }
 
 #define DEBUG true
 #define Serial if(DEBUG)Serial
 
 // Display Init
 Adafruit_SSD1306 display(128, 64, &Wire, -1);
+
 // UDP Wifi Init
 WiFiUDP ntpUDP;
 // NTP Time Client Init
@@ -41,6 +45,9 @@ MenuState menuState = FILE_SELECTION;
 ESP8266WebServer httpServer(80);
 // ESP Webserver based OTA updator Init
 ESP8266HTTPUpdateServer httpUpdater;
+
+bool DispColorMode = true;
+bool DispDimMode = false;
 
 // Button Pin Declaration
 #define BUTTON_UP_PIN 0
@@ -53,6 +60,8 @@ void setup() {
   Serial.begin(115200);
   // Display init
   display.begin(SSD1306_SWITCHCAPVCC, 0x3C);
+  Serial.println("[DISPLAY] Display Initialized");
+  // display.dim(true);
   // Buttons Init
   pinMode(BUTTON_UP_PIN, INPUT_PULLUP); // up button
   pinMode(BUTTON_SELECT_PIN, INPUT_PULLUP); // select button
@@ -91,7 +100,7 @@ void menuButtonHandler(){
     if ((digitalRead(BUTTON_UP_PIN) == LOW) && (button_up_clicked == 0)) { // up button clicked
       item_selected = item_selected - 1; // select previous item
       button_up_clicked = 1; 
-      Serial.println("Up clicked");
+      Serial.println("[BUTTON] Up");
       if (item_selected < 0) { // first item was selected
         item_selected = NUM_ITEMS-1;
       }
@@ -99,7 +108,7 @@ void menuButtonHandler(){
     else if ((digitalRead(BUTTON_DOWN_PIN) == LOW) && (button_down_clicked == 0)) { // down button clicked
       item_selected = item_selected + 1; // select next item
       button_down_clicked = 1;
-      Serial.println("Down clicked");
+      Serial.println("[BUTTON] Down");
       if (item_selected >= NUM_ITEMS) { // last item 
         item_selected = 0;
       }
@@ -113,7 +122,7 @@ void menuButtonHandler(){
     }
     if ((digitalRead(BUTTON_SELECT_PIN) == LOW) && (button_select_clicked == 0)) { 
       button_select_clicked = 1;
-      Serial.println("Select clicked");
+      Serial.println("[BUTTON] Select");
       if (current_screen == 0) {
         current_screen = 1;
       }
@@ -132,7 +141,7 @@ void globalBackHandler(){
 
   if ((digitalRead(BUTTON_BACK_PIN) == LOW) && (button_back_clicked == 0)) {
     button_back_clicked = 1;
-    Serial.println("Back clicked"); 
+    Serial.println("[BUTTON] Back"); 
     if (current_screen == 1) {
       inProgram = false;
       if (item_selected == 0){ stopPong(); }      
@@ -204,38 +213,42 @@ void renderMenu(){
 void programHandler(){
   if (item_selected == 0){
     inProgram = true;
-    Serial.println("In Pong");
+    Serial.println("[APP] Pong Started");
     while (inProgram){
       display.clearDisplay();
       setupPong();
       mainPong();
       globalBackHandler();
     }
+    Serial.println("[APP] Pong Exited");
+
   }
   else if (item_selected == 1) {
     inProgram = true;
-    Serial.println("In eReader");
+    Serial.println("[APP] eReader Started");
     setupEReader();
     while (inProgram){
       display.clearDisplay();
       mainEReader();
       globalBackHandler();
     }
+    Serial.println("[APP] eReader Exited");
   
   }
   else if (item_selected == 2 ) {
     inProgram = true;
-    Serial.println("In Resource Monitor");
+    Serial.println("[APP] Resource Monitor Started");
     while (inProgram){
       display.clearDisplay();
       mainResMon();
       globalBackHandler();
     }
+    Serial.println("[APP] Resource Monitor Exited");
   
   }
   else if (item_selected == 3) {
     inProgram = true;
-    Serial.println("In Internet Clock");
+    Serial.println("[APP] Internet Clock Started");
     timeClient.begin();
     WifiTurnONSTA();
     while (inProgram){
@@ -243,75 +256,98 @@ void programHandler(){
       timeFetch();
       globalBackHandler();
     }
+    Serial.println("[APP] Internet Clock Exited");
   
   }
   else if (item_selected == 4) {
     inProgram = true;
-    Serial.println("In Flappy Bird");
+    Serial.println("[APP] Flappy Bird Started");
     while (inProgram){
       display.clearDisplay();
       mainFlappyBird();
       globalBackHandler();
     }
+    Serial.println("[APP] Flappy Bird Exited");
   
 }      
   else if (item_selected == 5) {
     inProgram = true;
-    Serial.println("In Counter");
+    Serial.println("[APP] Counter Started");
     setupCounterScreen();
     while (inProgram){
       display.clearDisplay();
       mainCounter();
       globalBackHandler();
     }
+    Serial.println("[APP] Counter Exited");
+
   
 }  
   else if (item_selected == 6) {
-    display.invertDisplay(true);
+    Serial.println("[APP] Light/Dark Mode");
+    if (DispColorMode){
+      display.invertDisplay(true);
+      DispColorMode = false; 
+    }
+    else{
+      display.invertDisplay(false);
+      DispColorMode = true;
+    }    
     current_screen = 0;
 
 }     
   else if (item_selected == 7) {
-    display.invertDisplay(false);
+    Serial.println("[APP] Dim Display");
+    if (DispDimMode){
+      display.dim(false);
+      DispDimMode = false; 
+    }
+    else{
+     display.dim(true);
+      DispDimMode = true;
+    }    
     current_screen = 0;
 
 }     
   else if (item_selected == 8) {
     inProgram = true;
-    Serial.println("In Timer");
+    Serial.println("[APP] Timer Started");
     setupTimerScreen();
     while (inProgram){
       display.clearDisplay();
       mainTimer();
       globalBackHandler();
     }
+    Serial.println("[APP] Timer Exited");
   
 }
   else if (item_selected == 9) {
     inProgram = true;
-    Serial.println("In Stopwatch");
+    Serial.println("[APP] Stopwatch Started");
     setupStopwatchScreen();
     while (inProgram){
       display.clearDisplay();
       mainStopwatch();
       globalBackHandler();
     }
+    Serial.println("[APP] Stopwatch Exited");
   
 } 
   else if (item_selected == 10) {
     inProgram = true;
-    Serial.println("In OTA");
+    Serial.println("[APP] OTA Started");
     setupOTAScreen();
     while (inProgram){
       display.clearDisplay();
       buttonServerHandler();
       globalBackHandler();
     }
+    Serial.println("[APP] OTA Exited");
   
   } 
   else if (item_selected == 11) {
     inProgram = true;
-    Serial.println("In Packet Monitor");
+    Serial.println("[APP] Packet Monitor Started");
       WifiPromiscuousON();
       display.clearDisplay();
       mainPacMon();
@@ -320,22 +356,36 @@ void programHandler(){
   } 
   else if (item_selected == 12) {
     inProgram = true;
-    Serial.println("In WiFi Monitor");
+    Serial.println("[APP] WiFi Monitor Started");
     WifiTurnONSTA();
     while (inProgram){
       display.clearDisplay();
       displayWiFiStatus();
       globalBackHandler();
     }
+    Serial.println("[APP] WiFi Monitor Exited");
   
   } 
   else if (item_selected == 13) {
     inProgram = true;
-    Serial.println("In Wifi Scanner");
+    Serial.println("[APP] Wifi Scanner Started");
     WifiTurnONSTANC();
     while (inProgram){
       display.clearDisplay();
       mainWifiScanner();
+      globalBackHandler();
+    }
+    Serial.println("[APP] Wifi Scanner Exited");
+  
+  } 
+  else if (item_selected == 14) {
+    inProgram = true;
+    Serial.println("in Sleeper");
+          light_sleep();
+          delay(100);
+      current_screen = 0;
+    while (inProgram){
+      display.clearDisplay();
       globalBackHandler();
     }
   
@@ -1104,6 +1154,7 @@ void mainEReader(){
 
 void WifiTurnONAP(){
   // isWiFiRunning = true;
+  Serial.println("[WIFI] AP ON");
   WiFi.forceSleepWake();
   WiFi.mode(WIFI_AP); 
   WiFi.softAP("ESPOTA", "password");
@@ -1115,6 +1166,7 @@ void WifiTurnONAP(){
 
 void WifiTurnONSTA(){
   // isWiFiRunning = true;
+  Serial.println("[WIFI] STA ON");
   WiFi.forceSleepWake();
   WiFi.mode(WIFI_STA);
   wifi_station_connect();
@@ -1124,12 +1176,14 @@ void WifiTurnONSTA(){
 
 void WifiTurnONSTANC(){
   // isWiFiRunning = true;
+  Serial.println("[WIFI] STA NC ON");
   WiFi.forceSleepWake();
   WiFi.mode(WIFI_STA);
 }
 
 
 void WifiPromiscuousON(){
+  Serial.println("[WIFI] Promiscuous Mode ON");
   WiFi.forceSleepWake();
   wifi_set_opmode(STATION_MODE);
   wifi_promiscuous_enable(0);
@@ -1140,6 +1194,7 @@ void WifiPromiscuousON(){
 }
 
 void WifiPromiscuousOFF(){
+  Serial.println("[WIFI] Promiscuous Mode OFF");
   wifi_promiscuous_enable(0);
   WiFi.disconnect();
   WiFi.mode(WIFI_OFF);
@@ -1149,6 +1204,7 @@ void WifiPromiscuousOFF(){
 
 void WifiTurnOFFSTA(){
   // isWiFiRunning = false;
+  Serial.println("[WIFI] STA OFF");
   WiFi.disconnect();
   WiFi.mode(WIFI_OFF);
   WiFi.forceSleepBegin();
@@ -1157,6 +1213,7 @@ void WifiTurnOFFSTA(){
 
 void WifiTurnOFFAP(){
   // isWiFiRunning = false;
+  Serial.println("[WIFI] AP OFF");
   WiFi.softAPdisconnect();
   WiFi.mode(WIFI_OFF);
   WiFi.forceSleepBegin();
@@ -1548,3 +1605,23 @@ String getEncryptionType(int encryptionType) {
 //   }
 //   yield();
 // }
+void light_sleep(){
+  Serial.println("[POWER] Sleeping");
+   wifi_station_disconnect();
+   wifi_set_opmode_current(NULL_MODE);
+   wifi_fpm_set_sleep_type(LIGHT_SLEEP_T);
+   wifi_fpm_open(); // Enables force sleep
+   wifi_fpm_set_wakeup_cb(callback);
+   Serial.println("[DISPLAY] Display OFF");  
+   display.ssd1306_command(SSD1306_DISPLAYOFF);
+   gpio_pin_wakeup_enable(GPIO_ID_PIN(BUTTON_BACK_PIN), GPIO_PIN_INTR_LOLEVEL); // GPIO_ID_PIN(2) corresponds to GPIO2 on ESP8266-01 , GPIO_PIN_INTR_LOLEVEL for a logic low, can also do other interrupts, see gpio.h above
+   wifi_fpm_do_sleep(0xFFFFFFF); // Sleep for longest possible time
+ }
+
+ void callback(){
+  Serial.println("[DISPLAY] Display ON");   
+   display.ssd1306_command(SSD1306_DISPLAYON);
+   display.clearDisplay();
+   inProgram = false;
+   current_screen = 0;
+ }
