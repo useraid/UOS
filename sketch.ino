@@ -1,14 +1,9 @@
-#include <Wire.h>
-#include <Adafruit_GFX.h>
-#include <Adafruit_SSD1306.h>
+// External Libraries
 #include <ESP8266WiFi.h>
-#include <WiFiUdp.h>
-#include <NTPClient.h>     
-#include <TimeLib.h>
-#include <ESP8266HTTPUpdateServer.h>
 
 // Local Headers
 #include "menuAssets.h"
+#include "display.h"
 #include "flappyBirdGame.h"
 #include "pongGame.h"
 #include "internetClock.h"
@@ -19,22 +14,22 @@
 #include "eReader.h"
 #include "OTA.h"
 #include "packetMonitor.h"
-// #include "beaconSpammer.h"
 #include "wifiScanner.h"
+#include "wlanManager.h"
+#include "battery.h"
 
+// External ESP8266 NON RTOS SDK
 extern "C" {
-#include "user_interface.h"
+  #include "user_interface.h"
+  #include "gpio.h"   
 }
-extern "C" {
-   #include "gpio.h"
- }
 
+// Debugging Mode 
 #define DEBUG true
 #define Serial if(DEBUG)Serial
 
 // Display Init
 Adafruit_SSD1306 display(128, 64, &Wire, -1);
-
 // UDP Wifi Init
 WiFiUDP ntpUDP;
 // NTP Time Client Init
@@ -45,15 +40,16 @@ MenuState menuState = FILE_SELECTION;
 ESP8266WebServer httpServer(80);
 // ESP Webserver based OTA updator Init
 ESP8266HTTPUpdateServer httpUpdater;
-
-bool DispColorMode = true;
-bool DispDimMode = false;
+// WiFi Multi Init
+ESP8266WiFiMulti wifiMulti;
+// Captive Portal Based WiFi Login Init
+WiFiManager wifiManager;
 
 // Button Pin Declaration
 #define BUTTON_UP_PIN 0
 #define BUTTON_SELECT_PIN 12
 #define BUTTON_DOWN_PIN 14
-#define BUTTON_BACK_PIN 13
+#define BUTTON_BACK_PIN 3
 
 void setup() {
   // Debug Serial
@@ -61,37 +57,40 @@ void setup() {
   // Display init
   display.begin(SSD1306_SWITCHCAPVCC, 0x3C);
   Serial.println("[DISPLAY] Display Initialized");
-  // display.dim(true);
   // Buttons Init
   pinMode(BUTTON_UP_PIN, INPUT_PULLUP); // up button
   pinMode(BUTTON_SELECT_PIN, INPUT_PULLUP); // select button
   pinMode(BUTTON_DOWN_PIN, INPUT_PULLUP); // down button
   pinMode(BUTTON_BACK_PIN, INPUT_PULLUP); // back button
-  
+  // Setup Multiple Wifi Access Points Credentials
+  configureAccessPoints(); 
+  // Put Wifi Modem to sleep on startup
+  WiFi.forceSleepBegin();
+
 }
 
 void loop() {
-
   // UP DOWN SELECT Handler for main menu
   menuButtonHandler();
   // Global BACK Button Handler
   globalBackHandler();  
+  // Set Items on menu
+  itemSelection();
+  // Render Screens
+  if (current_screen == 0) { // MENU SCREEN
+    renderMenu();
+  }
+  else if (current_screen == 1) {
+    programHandler();
+  }
+}
 
+void itemSelection(){
   // set correct values for the previous and next items
   item_sel_previous = item_selected - 1;
   if (item_sel_previous < 0) {item_sel_previous = NUM_ITEMS - 1;} // previous item would be below first = make it the last
   item_sel_next = item_selected + 1;  
   if (item_sel_next >= NUM_ITEMS) {item_sel_next = 0;} // next item would be after last = make it the first
-
-  if (current_screen == 0) { // MENU SCREEN
-    renderMenu();
-  } 
-  else if (current_screen == 1) {
-    programHandler();
-  }
-  // else if (current_screen == 2){
-  //   settingsHandler();
-  // }
 }
 
 void menuButtonHandler(){
@@ -124,6 +123,7 @@ void menuButtonHandler(){
       button_select_clicked = 1;
       Serial.println("[BUTTON] Select");
       if (current_screen == 0) {
+        delay(200);
         current_screen = 1;
       }
       else if (current_screen == 1) {current_screen = 2;} 
@@ -142,7 +142,11 @@ void globalBackHandler(){
   if ((digitalRead(BUTTON_BACK_PIN) == LOW) && (button_back_clicked == 0)) {
     button_back_clicked = 1;
     Serial.println("[BUTTON] Back"); 
-    if (current_screen == 1) {
+    if (current_screen == 0){
+      light_sleep();
+      delay(100);
+    }
+    else if (current_screen == 1) {
       inProgram = false;
       if (item_selected == 0){ stopPong(); }      
       else if (item_selected == 4){ stopFlappyBird(); }
@@ -167,10 +171,13 @@ void globalBackHandler(){
         WifiTurnOFFSTA();
         display.clearDisplay();
         }
+      else if (item_selected == 16){ 
+        WifiTurnOFFSTA();
+        display.clearDisplay();
+        }
       else if (item_selected == 5){ display.clearDisplay(); }
       current_screen = 0;
       }
-
     else if (current_screen == 2) {current_screen = 1;} 
     else {current_screen = 0;}
   }
@@ -183,28 +190,23 @@ void renderMenu(){
   // selection box 
       display.clearDisplay();
       display.drawBitmap(0, 22, bitmap_item_sel_outline, 128, 21, WHITE);
-
       // previous item in menu
       display.setTextSize(1);
       display.setTextColor(WHITE);
       display.setCursor(12, 8);
       display.println(menu_items[item_sel_previous]);
-
       // current item in menu
       display.setTextSize(1);
       display.setTextColor(WHITE);
       display.setCursor(12, 8+20+2);
       display.println(menu_items[item_selected]);       
-
       // next item in menu
       display.setTextSize(1);
       display.setTextColor(WHITE);
       display.setCursor(12, 8+20+20+2+2);
       display.println(menu_items[item_sel_next]);       
-   
       // scrollbar background
       display.drawBitmap(128-8, 0, bitmap_scrollbar_background, 8, 64, WHITE);
-
       // scrollbar handle
       display.fillRect(125, 64/NUM_ITEMS * item_selected, 3, 64/NUM_ITEMS, WHITE);            
       display.display();
@@ -380,16 +382,37 @@ void programHandler(){
   } 
   else if (item_selected == 14) {
     inProgram = true;
-    Serial.println("in Sleeper");
-          light_sleep();
-          delay(100);
-      current_screen = 0;
-    while (inProgram){
-      display.clearDisplay();
-      globalBackHandler();
-    }
+    Serial.println("[SYSTEM] Restart");
+    display.clearDisplay();
+    display.setCursor(0,0);
+    display.println("Restarting....");
+    display.display();
+    ESP.restart();
+    delay(100);
   
   } 
+  else if (item_selected == 15) {
+    inProgram = true;
+    Serial.println("[APP] Wifi Setup Started");
+    while (inProgram){
+      display.clearDisplay();
+      mainWifiSetup();
+      globalBackHandler();
+    }
+    Serial.println("[APP] Wifi Setup Exited");
+  
+  }
+  else if (item_selected == 16) {
+    inProgram = true;
+    Serial.println("[APP] Battery Started");
+    while (inProgram){
+      display.clearDisplay();
+      mainBattery();
+      globalBackHandler();
+    }
+    Serial.println("[APP] Battery Exited");
+  
+  }
   else {
     display.clearDisplay();
     display.setTextSize(1);
@@ -399,74 +422,18 @@ void programHandler(){
     display.display();
   }
 
-  // else if (current_screen == 2) { // QR SCREEN
-  //     display.clearDisplay();
-  //     display.setTextSize(1);
-  //     display.setTextColor(WHITE);
-  //     display.setCursor(12, 8+20+20+2+2);
-  //     display.println("not implemented 2 lol"); 
-  //     display.display();
-  // }
 }
+///////////////////////
+/// Pong Functions ///
+/////////////////////
 
-// void settingsHandler(){
-//   if (item_selected == 0){
-//     inProgram = true;
-//     Serial.println("In Pong");
-//     while (inProgram){
-//       display.clearDisplay();
-//       setupPong();
-//       mainPong();
-//       globalBackHandler();
-//     }
-//   }
-//   else if (item_selected == 1) {
-//     inProgram = true;
-//     Serial.println("In eReader");
-//     setupEReader();
-//     while (inProgram){
-//       display.clearDisplay();
-//       mainEReader();
-//       globalBackHandler();
-//     }
-  
-//   }
-//   else if (item_selected == 10) {
-//     inProgram = true;
-//     Serial.println("In OTA");
-//     setupOTAScreen();
-//     while (inProgram){
-//       display.clearDisplay();
-//       buttonServerHandler();
-//       globalBackHandler();
-//     }
-  
-//   } 
-//   else {
-//     display.clearDisplay();
-//     display.setTextSize(1);
-//     display.setTextColor(WHITE);
-//     display.setCursor(12, 8+20+20+2+2);
-//     display.println("not implemented lol"); 
-//     display.display();
-//   }
-
-//   // else if (current_screen == 2) { // QR SCREEN
-//   //     display.clearDisplay();
-//   //     display.setTextSize(1);
-//   //     display.setTextColor(WHITE);
-//   //     display.setCursor(12, 8+20+20+2+2);
-//   //     display.println("not implemented 2 lol"); 
-//   //     display.display();
-//   // }  
-// }
-
-// Pong Functions
+// Draw Rectangular Court on Screen
 void drawCourt() 
 {
     display.drawRect(0, 0, 128, 54, WHITE);
 }
 
+// Main Game Function
 void mainPong() {
     bool update_needed = false;
     unsigned long time = millis();
@@ -615,6 +582,7 @@ void mainPong() {
     }
 }
 
+// Resetting all values to intial ones.
 void stopPong(){
   ball_x = 53;
   ball_y = 26;
@@ -626,17 +594,23 @@ void stopPong(){
   player_score = 0;
 }
 
+// Setup Game Timer
 void setupPong(){
     ball_update = millis();
     paddle_update = ball_update;
 }
 
-// Flappy Bird Functions
+/////////////////////////////
+/// Flappy Bird Functions///
+///////////////////////////
+
+// Centre Text on OLED
 void textAtCenter(int y, String txt) {
   display.setCursor(128 / 2 - txt.length() * 3, y);
   display.print(txt);
 }
 
+//  Main Game Function
 void mainFlappyBird(){ 
   if (game_state == 0) {    
     display.clearDisplay();
@@ -714,12 +688,18 @@ void mainFlappyBird(){
   yield();
 }
 
+// Stopping and resetting Game
 void stopFlappyBird(){
   display.clearDisplay();
   game_state = 1;
 }
 
+///////////////////////
+/// Internet Clock ///
+/////////////////////
 
+// Fetch Time from NTP
+// Format the Output in Time Array and print on Display
 void timeFetch(){
   timeClient.update();
   unsigned long unix_epoch = timeClient.getEpochTime();   // get UNIX Epoch time
@@ -755,9 +735,9 @@ void timeFetch(){
  
   } 
   delay(200);
-
 }
- 
+
+// Display Weekday
 void display_wday()
 {
   switch(wday){
@@ -770,7 +750,8 @@ void display_wday()
     default: draw_text(40, 5, "SATURDAY ", 1);
   }
 }
- 
+
+// Custom text display Function
 void draw_text(byte x_pos, byte y_pos, char *text, byte text_size)
 {
   display.setCursor(x_pos, y_pos);
@@ -778,6 +759,11 @@ void draw_text(byte x_pos, byte y_pos, char *text, byte text_size)
   display.print(text);
 }
 
+////////////////
+/// Counter ///
+//////////////
+
+// Initial waiting screen for input
 void setupCounterScreen(){
   display.clearDisplay();
   display.setTextSize(1);
@@ -787,6 +773,7 @@ void setupCounterScreen(){
   display.display();
 }
 
+// Counter Runner
 void mainCounter(){
   if (digitalRead(BUTTON_UP_PIN) == LOW) {
     delay(60); // Debounce delay
@@ -806,6 +793,7 @@ void mainCounter(){
   yield();
 }
 
+// Count Updator
 void updateDisplay() {
   display.clearDisplay();
   display.setTextColor(WHITE);
@@ -814,6 +802,12 @@ void updateDisplay() {
   textAtCenter(30, String(buttonCount));
   display.display();
 }
+
+//////////////
+/// Timer ///
+////////////
+
+// Timer Updator
 void updateScreen() {
   display.clearDisplay();
   display.setTextSize(2);
@@ -827,6 +821,7 @@ void updateScreen() {
   display.display();
 }
 
+// Initial waiting screen for input
 void setupTimerScreen(){
   display.clearDisplay();
   display.setTextSize(1);
@@ -836,6 +831,8 @@ void setupTimerScreen(){
   display.display();
 }
 
+// Main Timer 
+// Reads Input and controls timer
 void mainTimer(){
   // Button 1: Add minutes
   if (digitalRead(BUTTON_UP_PIN) == LOW) {
@@ -910,6 +907,11 @@ void mainTimer(){
   yield();
 }
 
+//////////////////
+/// Stopwatch ///
+////////////////
+
+// Initial waiting screen for input
 void setupStopwatchScreen(){
   display.clearDisplay();
   display.setTextSize(1);
@@ -919,6 +921,8 @@ void setupStopwatchScreen(){
   display.display();
 }
 
+// Main runner
+// Button input and process stopwatch
 void mainStopwatch(){
   static unsigned long previousTime = 0;
   const unsigned long interval = 100;  // Update display every 100 milliseconds
@@ -953,10 +957,15 @@ void mainStopwatch(){
   }
 }
 
+/////////////////////////
+/// Resource Monitor ///
+///////////////////////
+
+// Display Stats
 void mainResMon(){
   // Clear the display
   unsigned long currentMillis = millis();
-  if (currentMillis - previousUpdateTime >= 5000) {
+  if (currentMillis - previousUpdateTime >= 2000) {
     previousUpdateTime = currentMillis;
   display.setTextSize(1);
   display.clearDisplay();
@@ -1003,6 +1012,11 @@ void mainResMon(){
   yield();
 }
 
+////////////////
+/// eReader ///
+//////////////
+
+// Display list of texts available
 void displayFileSelection() {
   display.clearDisplay();
   display.setTextSize(1);
@@ -1026,6 +1040,7 @@ void displayFileSelection() {
   yield();
 }
 
+// Display the choosen text
 void displayFileContent() {
   display.clearDisplay();
   display.setTextSize(1);
@@ -1060,6 +1075,7 @@ void displayFileContent() {
   yield();
 }
 
+// Scroll text with buttons
 void scrollUp() {
   scrollOffset--;
   if (scrollOffset < 0) {
@@ -1077,6 +1093,7 @@ void scrollDown() {
   yield();
 }
 
+// Text selection
 void selectFile() {
   if (menuState == FILE_SELECTION) {
     menuState = FILE_VIEWING;
@@ -1091,10 +1108,12 @@ void selectFile() {
   delay(200);
 }
 
+// Setup initial number of texts available
 void setupEReader(){
   numberOfFiles = numFiles;
 }
 
+// eReader handler
 void mainEReader(){
     // Check button states
   int upButtonState = digitalRead(BUTTON_UP_PIN);
@@ -1150,30 +1169,48 @@ void mainEReader(){
   yield();
 }
 
-// Wifi Functions
+/////////////////////////
+/// System Functions ///
+///////////////////////
 
+// Wifi Functions
+// All these functions put WiFi Modem to sleep after Turning OFF
+// List of Known Common APs around
+void configureAccessPoints() {
+  wifiMulti.addAP("EACCESS", "hostelnet");
+  wifiMulti.addAP("TU", "tu@inet1");
+  wifiMulti.addAP("LC", "lc@tiet1");
+  wifiMulti.addAP("CSED", "csed@123#");
+  wifiMulti.addAP("Placement Cell", "Cilp@98765");
+  wifiMulti.addAP("Machine Tool", "workshop@54321");
+  wifiMulti.addAP("HostelB", "hostelnet");
+  wifiMulti.addAP("Audi", "audi@net");
+}
+
+// Turn ON Access Point Mode and create a AP with SSID ESPOTA
 void WifiTurnONAP(){
   // isWiFiRunning = true;
   Serial.println("[WIFI] AP ON");
   WiFi.forceSleepWake();
   WiFi.mode(WIFI_AP); 
   WiFi.softAP("ESPOTA", "password");
-  // IPAddress apIP = WiFi.softAPIP();
-  // Serial.print("AP IP address: ");
-  // Serial.println(apIP);
-
 }
 
+// Turn ON Station Mode and connect to Network
 void WifiTurnONSTA(){
   // isWiFiRunning = true;
   Serial.println("[WIFI] STA ON");
   WiFi.forceSleepWake();
   WiFi.mode(WIFI_STA);
   wifi_station_connect();
-  WiFi.begin(ssid, password);
 
+  while (wifiMulti.run() != WL_CONNECTED) {
+  Serial.println("WiFi not connected!");
+  delay(500);
+  }
 }
 
+// Turn ON Station Mode but do not connect to Network
 void WifiTurnONSTANC(){
   // isWiFiRunning = true;
   Serial.println("[WIFI] STA NC ON");
@@ -1181,8 +1218,9 @@ void WifiTurnONSTANC(){
   WiFi.mode(WIFI_STA);
 }
 
-
+// Turn ON Promiscuous Mode
 void WifiPromiscuousON(){
+  // isWiFiRunning = true;
   Serial.println("[WIFI] Promiscuous Mode ON");
   WiFi.forceSleepWake();
   wifi_set_opmode(STATION_MODE);
@@ -1193,7 +1231,9 @@ void WifiPromiscuousON(){
   wifi_promiscuous_enable(1);
 }
 
+// Turn OFF Promiscuous Mode
 void WifiPromiscuousOFF(){
+  // isWiFiRunning = false;
   Serial.println("[WIFI] Promiscuous Mode OFF");
   wifi_promiscuous_enable(0);
   WiFi.disconnect();
@@ -1202,6 +1242,7 @@ void WifiPromiscuousOFF(){
   delay(1);
 }
 
+// Disconnect and Turn OFF Station Mode
 void WifiTurnOFFSTA(){
   // isWiFiRunning = false;
   Serial.println("[WIFI] STA OFF");
@@ -1211,6 +1252,7 @@ void WifiTurnOFFSTA(){
   delay(1);
 }
 
+// Disconnect and Turn OFF Access Point Mode
 void WifiTurnOFFAP(){
   // isWiFiRunning = false;
   Serial.println("[WIFI] AP OFF");
@@ -1220,11 +1262,13 @@ void WifiTurnOFFAP(){
   delay(1);
 }
 
+////////////
+/// OTA ///
+//////////
+
 void startServer() {
   // Start in access point mode
   WifiTurnONAP();
-  // delay(100);
-  // int numConnectedDevices = WiFi.softAPgetStationNum();
   IPAddress apIP = WiFi.softAPIP();
   httpUpdater.setup(&httpServer);
 
@@ -1244,13 +1288,7 @@ void startServer() {
   display.println("OTA");
   display.println("Server: Running");
   display.println("IP: " + apIP.toString());
-  // if (numConnectedDevices > 0) {
-  //   display.println("Device connected");
-  //   display.print("Devices: ");
-  //   display.println(numConnectedDevices);
-  // } else {
-  //   display.println("No device connected");
-  // }
+  display.println("AP: ESPOTA");
   display.display();
 }
 
@@ -1280,7 +1318,6 @@ void stopServer() {
   display.println("Server: Stopped");
   display.display();
 }
-
 
 void buttonServerHandler(){
     if (digitalRead(BUTTON_UP_PIN) == LOW) {
@@ -1361,7 +1398,6 @@ void mainPacMon(){
   }
 
 }
-
 
 void sniffer(uint8_t *buf, uint16_t len) {
   pkts++;
@@ -1525,86 +1561,6 @@ String getEncryptionType(int encryptionType) {
   }
 }
 
-// void setupBeaconSpam(){
-
-//   display.clearDisplay();
-//   display.setCursor(0, 20);
-//   display.println("Beacon Spam");
-//   display.println("Press button to start/stop");
-//   display.display();
-//   yield();
-
-// }
-
-// void mainBeaconSpam(){
-//   curSelButtonState = digitalRead(BUTTON_UP_PIN);
-  
-//   if (curSelButtonState != lastSelButtonState) {
-//     if (curSelButtonState == LOW) {
-//       isPacketTransmitting = !isPacketTransmitting;
-      
-//       if (isPacketTransmitting) {
-//         wifi_set_opmode(STATION_MODE);
-//         wifi_promiscuous_enable(1);
-//         display.clearDisplay();
-//         display.display();
-//       } else {
-//         display.clearDisplay();
-//         display.setCursor(0, 0);
-//         display.println("Beacon Spam");
-//         display.println("stopped");
-//         display.display();
-//         beaconCount = 0;
-//         wifi_promiscuous_enable(0);
-//         WiFi.disconnect();
-//         WiFi.mode(WIFI_OFF);
-//         WiFi.forceSleepBegin();
-//         delay(1);
-
-//       }
-//       yield();
-//     }
-//     yield();
-//   }
-//   yield();
-//   lastSelButtonState = curSelButtonState;
-  
-//   if (isPacketTransmitting) {
-//     spamChannel = random(1, 12); 
-//     wifi_set_channel(spamChannel);
-
-//     packet[10] = packet[16] = random(256);
-//     packet[11] = packet[17] = random(256);
-//     packet[12] = packet[18] = random(256);
-//     packet[13] = packet[19] = random(256);
-//     packet[14] = packet[20] = random(256);
-//     packet[15] = packet[21] = random(256);
-
-//     packet[38] = ssidGen[random(65)];
-//     packet[39] = ssidGen[random(65)];
-//     packet[40] = ssidGen[random(65)];
-//     packet[41] = ssidGen[random(65)];
-//     packet[42] = ssidGen[random(65)];
-//     packet[43] = ssidGen[random(65)];
-    
-//     packet[56] = spamChannel;
-    
-//     wifi_send_pkt_freedom(packet, 57, 0);
-//     wifi_send_pkt_freedom(packet, 57, 0);
-//     wifi_send_pkt_freedom(packet, 57, 0);
-//     delay(1);
-    
-//     // Increment the beacon count and update the display
-//     beaconCount++;
-//     display.clearDisplay();
-//     display.setCursor(0, 0);
-//     display.print("Beacons: ");
-//     display.println(beaconCount);
-//     display.display();
-//     yield();
-//   }
-//   yield();
-// }
 void light_sleep(){
   Serial.println("[POWER] Sleeping");
    wifi_station_disconnect();
@@ -1614,7 +1570,8 @@ void light_sleep(){
    wifi_fpm_set_wakeup_cb(callback);
    Serial.println("[DISPLAY] Display OFF");  
    display.ssd1306_command(SSD1306_DISPLAYOFF);
-   gpio_pin_wakeup_enable(GPIO_ID_PIN(BUTTON_BACK_PIN), GPIO_PIN_INTR_LOLEVEL); // GPIO_ID_PIN(2) corresponds to GPIO2 on ESP8266-01 , GPIO_PIN_INTR_LOLEVEL for a logic low, can also do other interrupts, see gpio.h above
+   gpio_pin_wakeup_enable(GPIO_ID_PIN(BUTTON_DOWN_PIN), GPIO_PIN_INTR_LOLEVEL); // GPIO_ID_PIN(2) corresponds to GPIO2 on ESP8266-01 , GPIO_PIN_INTR_LOLEVEL for a logic low, can also do other interrupts, see gpio.h above
+   gpio_pin_wakeup_enable(GPIO_ID_PIN(BUTTON_UP_PIN), GPIO_PIN_INTR_LOLEVEL);
    wifi_fpm_do_sleep(0xFFFFFFF); // Sleep for longest possible time
  }
 
@@ -1625,3 +1582,154 @@ void light_sleep(){
    inProgram = false;
    current_screen = 0;
  }
+
+
+void mainWifiSetup(){  
+  // Check for button press
+  if (digitalRead(BUTTON_UP_PIN) == LOW) {
+    wifiEnabled = !wifiEnabled; // Toggle WiFi state
+    isDirty = true; // Mark display for refresh
+    setWiFiState(wifiEnabled); // Set WiFi state
+    delay(100); // Button debouncing delay
+  }
+
+  if (digitalRead(BUTTON_DOWN_PIN) == LOW) {
+    apEnabled = !apEnabled; // Toggle AP state
+    isDirty = true; // Mark display for refresh
+    setAPState(apEnabled); // Set AP state
+    delay(100); // Button debouncing delay
+  }
+
+  if (digitalRead(BUTTON_SELECT_PIN) == LOW) {
+    captivePortalEnabled = !captivePortalEnabled; // Toggle captive portal state
+    isDirty = true; // Mark display for refresh
+    setCaptivePortalState(captivePortalEnabled); // Set captive portal state
+    delay(100); // Button debouncing delay
+  }
+
+  drawWifiMain();
+  yield();
+}
+
+void drawWifiMain(){
+  
+  if (isDirty) {
+    display.clearDisplay();
+    display.setCursor(0, 0);
+    display.setTextSize(1);
+    display.print("WiFi: ");
+    display.println(wifiEnabled ? "ON " : "OFF");
+
+    display.print("AP: ");
+    display.println(apEnabled ? "ON " : "OFF");
+
+    display.print("Captive Portal: ");
+    display.println(captivePortalEnabled ? "ON " : "OFF");
+
+    if (wifiEnabled && WiFi.status() == WL_CONNECTED) {
+      display.println("IP: " + WiFi.localIP().toString());
+      display.println("SSID: " + String(WiFi.SSID()));
+      display.println("Signal: " + String(WiFi.RSSI()) + " dBm");
+      display.println("Gateway:" + WiFi.gatewayIP().toString());
+      display.println("Subnet:" + WiFi.subnetMask().toString());
+
+    }
+
+    if (captivePortalEnabled && WiFi.status() == WL_CONNECTED) {
+      display.println("IP: " + WiFi.localIP().toString());
+      display.println("SSID: " + String(WiFi.SSID()));
+      display.println("Signal: " + String(WiFi.RSSI()) + " dBm");
+      display.println("Gateway:" + WiFi.gatewayIP().toString());
+      display.println("Subnet:" + WiFi.subnetMask().toString());
+
+    }
+
+    if (apEnabled) {
+      display.println();
+      display.println("AP IP:");
+      display.println(WiFi.softAPIP().toString());
+    }
+
+    display.display();
+    isDirty = false;
+  }
+  yield();
+}
+
+void setWiFiState(bool state) {
+  display.clearDisplay();
+  display.setCursor(0, 0);
+
+  if (state) {
+    display.print("Connecting");
+    display.display();
+    WifiTurnONSTA();
+
+  } else {
+    display.println("Disconnecting");
+    display.display();
+    WifiTurnOFFSTA();
+  }
+}
+
+void setAPState(bool state) {
+  display.clearDisplay();
+  display.setCursor(0, 0);
+
+  if (state) {
+    display.println("Enabling AP");
+    display.display();
+    WifiTurnONAP();
+  } else {
+    display.println("Disabling AP");
+    display.display();
+    WifiTurnOFFAP();
+  }
+}
+
+void setCaptivePortalState(bool state) {
+  display.clearDisplay();
+  display.setCursor(0, 0);
+
+  if (state) {
+    display.println("Starting Captive Portal");
+    display.display();
+    wifiManager.setConfigPortalTimeout(60);
+    wifiManager.startConfigPortal("ESPOTA", "password");
+
+  } else {
+    display.println("Stopping Captive Portal");
+    display.display();
+    wifiManager.stopConfigPortal();
+  }
+}
+
+void mainBattery(){
+  unsigned long currentMillis = millis();
+  if (currentMillis - prevTimeBat >= pollingBat)
+  {
+    prevTimeBat = currentMillis;
+
+    sensorValue = analogRead(analogInPin);
+    float voltage = (((sensorValue * 3.3) / 1024) * 2 + calibration);
+    bat_percentage = mapfloat(voltage, 2.9, 4.1, 0, 100);
+    if (bat_percentage >= 100) { bat_percentage = 100; }
+    if (bat_percentage <= 0) { bat_percentage = 1; }
+
+    display.clearDisplay();
+    display.setCursor(0, 0);
+    display.print("Voltage ");
+    display.println(voltage);
+    display.print("Percentage ");
+    display.println(bat_percentage);
+    display.display();
+
+    Serial.print("Output Voltage = ");
+    Serial.print(voltage);
+    Serial.print("  Battery Percentage = ");
+    Serial.println(bat_percentage);
+  }
+}
+float mapfloat(float x, float in_min, float in_max, float out_min, float out_max){
+  return (x - in_min) * (out_max - out_min) / (in_max - in_min) + out_min;
+}

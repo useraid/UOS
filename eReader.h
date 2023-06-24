@@ -1,3 +1,6 @@
+// eReader
+
+// Variables
 int selectedFileIndex = 0;
 int numberOfFiles = 0;
 
@@ -20,6 +23,7 @@ const int numFiles = sizeof(fileHeadings) / sizeof(fileHeadings[0]);
 
 int scrollOffset = 0;
 
+// Reader state
 enum MenuState {
   FILE_SELECTION,
   FILE_VIEWING

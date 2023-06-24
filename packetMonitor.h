@@ -1,4 +1,6 @@
+// Packet Monitor
 
+// Variable Definitions
 const int maxCh = 13;
 
 /* Display settings */

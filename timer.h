@@ -1,3 +1,6 @@
+// Timer
+
+// Variables
 int timerMinutes = 0;
 int timerSeconds = 0;
 bool timerRunning = false;

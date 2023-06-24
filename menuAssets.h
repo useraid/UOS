@@ -1,5 +1,6 @@
+// Main Menu
 // Menu Item Array
-const int NUM_ITEMS = 15; // number of items in menu array
+const int NUM_ITEMS = 18; // number of items in menu array
 const int MAX_ITEM_LENGTH = 20; // max characters for the menu item
 
 char menu_items [NUM_ITEMS] [MAX_ITEM_LENGTH] = {  // menu array
@@ -17,6 +18,9 @@ char menu_items [NUM_ITEMS] [MAX_ITEM_LENGTH] = {  // menu array
   { "Packet Monitor" },
   { "WiFi Monitor" },
   { "WiFi Scanner" },
+  { "Restart" },
+  { "WiFi Setup" },
+  { "Battery" },
   { "meow meow" }
  };
 
