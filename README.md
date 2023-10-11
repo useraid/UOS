@@ -26,6 +26,9 @@ OS for ESP8266 based Smartwatches
 
 ![Modes](https://github.com/useraid/UOS/assets/93074700/fc2c6960-9bd7-4dd7-ba2a-45720d87ece6)
 
+## Documentation
+Documentation is a WIP but in current state it can be accessed [here.](https://github.com/useraid/UOS/tree/main/Docs)
+
 ### Currently WIP 🚧
 
 If you have any problems in the implementation or just ever need general help with this project, make an issue regarding the same.
