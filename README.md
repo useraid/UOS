@@ -22,6 +22,19 @@ OS for ESP8266 based Smartwatches
 - WiFi Manager
 - Dim Display / Night Mode
 
+## Planned Features
+- News Reader
+- Jokes API Integration
+- RTC Clock Integration
+- Home Page
+- WiFi selection page
+- Deauther and Beason Attacks
+- TXT Server
+- Alarm
+- Buzzer / Beep
+- Charging Indicator
+- More Games
+  
 ## Screenshots
 
 ![Modes](https://github.com/useraid/UOS/assets/93074700/fc2c6960-9bd7-4dd7-ba2a-45720d87ece6)
