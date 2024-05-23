@@ -33,6 +33,11 @@ OS for ESP8266 based Smartwatches
 - Alarm
 - Buzzer / Beep
 - Charging Indicator
+- Weather
+- Temperature from hardware sensor
+- ChatGPT integration
+- WiFi Geolocation
+- Text based Navigation
 - More Games
   
 ## Screenshots
