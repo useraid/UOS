@@ -39,7 +39,8 @@ OS for ESP8266 based Smartwatches
 - WiFi Geolocation
 - Text based Navigation
 - More Games
-  
+
+  *Reference* - https://mixedanalytics.com/blog/list-actually-free-open-no-auth-needed-apis/
 ## Screenshots
 
 ![Modes](https://github.com/useraid/UOS/assets/93074700/fc2c6960-9bd7-4dd7-ba2a-45720d87ece6)
