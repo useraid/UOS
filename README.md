@@ -3,23 +3,23 @@ OS for ESP8266 based Smartwatches
 
 | Category         | Features                                                                                                 | Status |
 |------------------|----------------------------------------------------------------------------------------------------------|--------|
-| **Current Features** | Stopwatch                                                                                                | ✔️      |
-|                  | Internet Clock                                                                                           | ✔️      |
-|                  | Timer                                                                                                    | ✔️      |
-|                  | Click Counter                                                                                            | ✔️      |
-|                  | Flappy Bird                                                                                              | ✔️      |
-|                  | Pong                                                                                                     | ✔️      |
-|                  | eReader                                                                                                  | ✔️      |
-|                  | Battery Monitor                                                                                          | ✔️      |
-|                  | WiFi Scanner                                                                                             | ✔️      |
-|                  | WiFi Monitor                                                                                             | ✔️      |
-|                  | Packet Monitor                                                                                           | ✔️      |
-|                  | Resource Monitor                                                                                         | ✔️      |
-|                  | OTA Update                                                                                               | ✔️      |
-| **System Options**   | Restart                                                                                                  | ✔️      |
-|                  | Light Mode / Dark Mode                                                                                   | ✔️      |
-|                  | WiFi Manager                                                                                             | ✔️      |
-|                  | Dim Display / Night Mode                                                                                 | ✔️      |
+| **Current Features** | Stopwatch                                                                                                | ✅      |
+|                  | Internet Clock                                                                                           | ✅      |
+|                  | Timer                                                                                                    | ✅      |
+|                  | Click Counter                                                                                            | ✅      |
+|                  | Flappy Bird                                                                                              | ✅      |
+|                  | Pong                                                                                                     | ✅      |
+|                  | eReader                                                                                                  | ✅      |
+|                  | Battery Monitor                                                                                          | ✅      |
+|                  | WiFi Scanner                                                                                             | ✅      |
+|                  | WiFi Monitor                                                                                             | ✅      |
+|                  | Packet Monitor                                                                                           | ✅      |
+|                  | Resource Monitor                                                                                         | ✅      |
+|                  | OTA Update                                                                                               | ✅      |
+| **System Options**   | Restart                                                                                                  | ✅      |
+|                  | Light Mode / Dark Mode                                                                                   | ✅      |
+|                  | WiFi Manager                                                                                             | ✅      |
+|                  | Dim Display / Night Mode                                                                                 | ✅      |
 | **Planned Features** | News Reader                                                                                              | ⏳     |
 |                  | Jokes API Integration                                                                                    | ⏳     |
 |                  | RTC Clock Integration                                                                                    | ⏳     |
@@ -35,9 +35,8 @@ OS for ESP8266 based Smartwatches
 |                  | ChatGPT integration                                                                                      | ⏳     |
 |                  | WiFi Geolocation                                                                                         | ⏳     |
 |                  | Text based Navigation                                                                                    | ⏳     |
-|                  | Calendar                                                                                                 | ✔️      |
+|                  | Calendar                                                                                                 | ✅     |
 |                  | More Games                                                                                               | ⏳     |
-
 
   *Reference* - https://mixedanalytics.com/blog/list-actually-free-open-no-auth-needed-apis/
 ## Screenshots
