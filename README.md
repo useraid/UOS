@@ -59,6 +59,7 @@ OS for ESP8266 based Smartwatches
                     <li>ChatGPT integration</li>
                     <li>WiFi Geolocation</li>
                     <li>Text based Navigation</li>
+                    <li>Calender</li>
                     <li>More Games</li>
                 </ul>
             </td>
