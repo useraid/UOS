@@ -46,10 +46,10 @@ ESP8266WiFiMulti wifiMulti;
 WiFiManager wifiManager;
 
 // Button Pin Declaration
-#define BUTTON_UP_PIN 0
-#define BUTTON_SELECT_PIN 12
-#define BUTTON_DOWN_PIN 14
-#define BUTTON_BACK_PIN 3
+#define BUTTON_UP_PIN 14
+#define BUTTON_SELECT_PIN 0
+#define BUTTON_DOWN_PIN 12
+#define BUTTON_BACK_PIN 13
 
 void setup() {
   // Debug Serial
@@ -752,7 +752,7 @@ void display_wday()
 }
 
 // Custom text display Function
-void draw_text(byte x_pos, byte y_pos, char *text, byte text_size)
+void draw_text(byte x_pos, byte y_pos, const char *text, byte text_size)
 {
   display.setCursor(x_pos, y_pos);
   display.setTextSize(text_size);
@@ -1177,6 +1177,7 @@ void mainEReader(){
 // All these functions put WiFi Modem to sleep after Turning OFF
 // List of Known Common APs around
 void configureAccessPoints() {
+  wifiMulti.addAP("PHS", "");
   wifiMulti.addAP("EACCESS", "hostelnet");
   wifiMulti.addAP("TU", "tu@inet1");
   wifiMulti.addAP("LC", "lc@tiet1");
@@ -1604,7 +1605,7 @@ void mainWifiSetup(){
     captivePortalEnabled = !captivePortalEnabled; // Toggle captive portal state
     isDirty = true; // Mark display for refresh
     setCaptivePortalState(captivePortalEnabled); // Set captive portal state
-    delay(100); // Button debouncing delay
+    delay(180); // Button debouncing delay
   }
 
   drawWifiMain();
@@ -1730,6 +1731,7 @@ void mainBattery(){
     Serial.println(bat_percentage);
   }
 }
+
 float mapfloat(float x, float in_min, float in_max, float out_min, float out_max){
   return (x - in_min) * (out_max - out_min) / (in_max - in_min) + out_min;
 }
