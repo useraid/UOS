@@ -21,7 +21,7 @@ OS for ESP8266 based Smartwatches
 |                  | WiFi Manager                                                                                             | ✅      |
 |                  | Dim Display / Night Mode                                                                                 | ✅      |
 | **Planned Features** | News Reader                                                                                              | ⏳     |
-|                  | Jokes API Integration                                                                                    | ⏳     |
+|                  | Jokes API Integration                                                                                    | ✅     |
 |                  | RTC Clock Integration                                                                                    | ⏳     |
 |                  | Home Page                                                                                                | ⏳     |
 |                  | WiFi selection page                                                                                      | ⏳     |
