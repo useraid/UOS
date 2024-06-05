@@ -30,7 +30,7 @@ OS for ESP8266 based Smartwatches
 |                  | Alarm                                                                                                    | ⏳     |
 |                  | Buzzer / Beep                                                                                            | ⏳     |
 |                  | Charging Indicator                                                                                       | ⏳     |
-|                  | Weather                                                                                                  | ⏳     |
+|                  | Weather                                                                                                  | ✅     |
 |                  | Temperature from hardware sensor                                                                         | ⏳     |
 |                  | ChatGPT integration                                                                                      | ⏳     |
 |                  | WiFi Geolocation                                                                                         | ⏳     |
