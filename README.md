@@ -28,8 +28,8 @@ OS for ESP8266 based Smartwatches
 |                  | Deauther and Beacon Attacks                                                                              | ⏳     |
 |                  | TXT Server                                                                                               | ⏳     |
 |                  | Alarm                                                                                                    | ⏳     |
-|                  | Buzzer / Beep                                                                                            | ⏳     |
-|                  | Charging Indicator                                                                                       | ⏳     |
+|                  | Buzzer / Beep                                                                                            | ✅     |
+|                  | Charging Indicator                                                                                       | ✅     |
 |                  | Weather                                                                                                  | ✅     |
 |                  | Temperature from hardware sensor                                                                         | ⏳     |
 |                  | ChatGPT integration                                                                                      | ⏳     |
